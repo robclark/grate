@@ -842,6 +842,12 @@ void nvhost_gr3d_viewport(struct nvhost_pushbuf *pb,
 	value.f = vh * 8.0f; /* y scale */
 	nvhost_pushbuf_push(pb, value.u); /* 0x356 */
 }
+void nvhost_gr3d_scissor(struct nvhost_pushbuf *pb, int x, int y, int w, int h)
+{
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x350, 0x02));
+	nvhost_pushbuf_push(pb, ((x + w) & 0xffff) | (x << 16)); /* 0x350 */
+	nvhost_pushbuf_push(pb, ((y + h) & 0xffff) | (y << 16)); /* 0x351 */
+}
 
 int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 			 struct nvmap_framebuffer *fb)
@@ -954,9 +960,9 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, 0x40dfae14);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x343, 0x01));
 	nvhost_pushbuf_push(pb, 0xb8e00000);
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x350, 0x02));
-	nvhost_pushbuf_push(pb, fb->width  & 0xffff);
-	nvhost_pushbuf_push(pb, fb->height & 0xffff);
+
+	nvhost_gr3d_scissor(pb, 1, 1, fb->width - 2, fb->height - 2);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0xe11, 0x01));
 
 	if (depth == 16) {
