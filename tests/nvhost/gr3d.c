@@ -32,6 +32,18 @@
 #define NVHOST_GR3D_FORMAT_RGB565	0x6
 #define NVHOST_GR3D_FORMAT_RGBA8888	0xd
 
+#define NVHOST_GR3D_INDEX_NONE   0
+#define NVHOST_GR3D_INDEX_UINT8  1
+#define NVHOST_GR3D_INDEX_UINT16 2
+
+#define NVHOST_GR3D_PRIMITIVE_POINTS         0x0
+#define NVHOST_GR3D_PRIMITIVE_LINES          0x1
+#define NVHOST_GR3D_PRIMITIVE_LINE_LOOP      0x2
+#define NVHOST_GR3D_PRIMITIVE_LINE_STRIP     0x3
+#define NVHOST_GR3D_PRIMITIVE_TRIANGLES      0x4
+#define NVHOST_GR3D_PRIMITIVE_TRIANGLE_STRIP 0x5
+#define NVHOST_GR3D_PRIMITIVE_TRIANGLE_FAN   0x6
+
 static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
 {
 	const unsigned int num_attributes = 16;
@@ -842,6 +854,7 @@ void nvhost_gr3d_viewport(struct nvhost_pushbuf *pb,
 	value.f = vh * 8.0f; /* y scale */
 	nvhost_pushbuf_push(pb, value.u); /* 0x356 */
 }
+
 void nvhost_gr3d_scissor(struct nvhost_pushbuf *pb, int x, int y, int w, int h)
 {
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x350, 0x02));
@@ -860,6 +873,17 @@ void nvhost_gr3d_line_width(struct nvhost_pushbuf *pb, float w)
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x34d, 0x01));
 	nvhost_pushbuf_push(pb, value.u);
+}
+
+void nvhost_gr3d_draw_indexed(struct nvhost_pushbuf *pb,
+    int mode, int count, int type,
+    struct nvmap_handle *buffer, size_t offset)
+{
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x121, 0x03));
+	nvhost_pushbuf_relocate(pb, buffer, offset, 0);
+	nvhost_pushbuf_push(pb, 0xdeadbeef); /* 0x121 */
+	nvhost_pushbuf_push(pb, 0xc8000000 | (type << 28) | (mode << 24)); /* 0x122 */
+	nvhost_pushbuf_push(pb, (count - 1) << 20); /* 0x123 */
 }
 
 int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
@@ -1220,12 +1244,19 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x102, 0x01));
 	nvhost_pushbuf_relocate(pb, gr3d->attributes, 0, 0);
 	nvhost_pushbuf_push(pb, 0xdeadbeef);
-	/* primitive indices */
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x121, 0x03));
-	nvhost_pushbuf_relocate(pb, gr3d->attributes, 0x60, 0);
-	nvhost_pushbuf_push(pb, 0xdeadbeef);
-	nvhost_pushbuf_push(pb, 0xec000000);
-	nvhost_pushbuf_push(pb, 0x00200000);
+
+	nvhost_gr3d_viewport(pb, 0, 0, fb->width / 2, fb->height);
+
+	nvhost_gr3d_draw_indexed(pb, NVHOST_GR3D_PRIMITIVE_TRIANGLES, 3,
+	    NVHOST_GR3D_INDEX_UINT16, gr3d->attributes, 0x60);
+
+	nvhost_gr3d_viewport(pb, fb->width / 2, 0, fb->width / 2, fb->height);
+
+	nvhost_gr3d_line_width(pb, 2.0f);
+
+	nvhost_gr3d_draw_indexed(pb, NVHOST_GR3D_PRIMITIVE_LINE_LOOP, 3,
+	    NVHOST_GR3D_INDEX_UINT16, gr3d->attributes, 0x60);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xe27, 0x02));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x01));
 	nvhost_pushbuf_push(pb, 0x00000216);
