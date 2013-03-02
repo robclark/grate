@@ -817,13 +817,35 @@ void nvhost_gr3d_close(struct nvhost_gr3d *gr3d)
 	free(gr3d);
 }
 
-int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
-			 struct nvmap_framebuffer *fb)
+void nvhost_gr3d_viewport(struct nvhost_pushbuf *pb,
+    float vx, float vy, float vw, float vh)
 {
 	union {
 		uint32_t u;
 		float f;
 	} value;
+
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x352, 0x1b));
+
+	/* conceptually:
+	 * x' = ((x * vw / 2) + vx + vw / 2) * 16
+	 * y' = ((y * vh / 2) + vy + vh / 2) * 16
+	 */
+
+	value.f = vx * 16.0f + vw * 8.0f; /* x bias */
+	nvhost_pushbuf_push(pb, value.u); /* 0x352 */
+	value.f = vy * 16.0f + vh * 8.0f; /* y bias */
+	nvhost_pushbuf_push(pb, value.u); /* 0x353 */
+
+	value.f = vw * 8.0f; /* x scale */
+	nvhost_pushbuf_push(pb, value.u); /* 0x355 */
+	value.f = vh * 8.0f; /* y scale */
+	nvhost_pushbuf_push(pb, value.u); /* 0x356 */
+}
+
+int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
+			 struct nvmap_framebuffer *fb)
+{
 	float *attr = gr3d->attributes->ptr;
 	struct nvhost_pushbuf *pb;
 	unsigned int depth = 32;
@@ -923,17 +945,8 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, 0x00000216);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x1));
 	nvhost_pushbuf_push(pb, 0x00000216);
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x352, 0x1b));
 
-	value.f = fb->width * 8.0f;
-	nvhost_pushbuf_push(pb, value.u);
-	value.f = fb->height * 8.0f;
-	nvhost_pushbuf_push(pb, value.u);
-
-	value.f = fb->width * 8.0f;
-	nvhost_pushbuf_push(pb, value.u);
-	value.f = fb->height * 8.0f;
-	nvhost_pushbuf_push(pb, value.u);
+	nvhost_gr3d_viewport(pb, 0, 0, fb->width, fb->height);
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x358, 0x03));
 	nvhost_pushbuf_push(pb, 0x4376f000);
