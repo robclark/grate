@@ -110,6 +110,11 @@ struct nvhost_set_priority_args {
 	uint32_t priority;
 };
 
+struct nvhost_read_3d_reg_args {
+	uint32_t offset;
+	uint32_t value;
+};
+
 #define NVHOST_IOCTL_MAGIC 'H'
 
 #define NVHOST_IOCTL_CHANNEL_FLUSH           _IOR(NVHOST_IOCTL_MAGIC,  1, struct nvhost_get_param_args)
@@ -119,6 +124,7 @@ struct nvhost_set_priority_args {
 #define NVHOST_IOCTL_CHANNEL_SET_NVMAP_FD    _IOW(NVHOST_IOCTL_MAGIC,  5, struct nvhost_set_nvmap_fd_args)
 #define NVHOST_IOCTL_CHANNEL_NULL_KICKOFF    _IOR(NVHOST_IOCTL_MAGIC,  6, struct nvhost_get_param_args)
 #define NVHOST_IOCTL_CHANNEL_SUBMIT_EXT      _IOW(NVHOST_IOCTL_MAGIC,  7, struct nvhost_submit_hdr_ext)
+#define NVHOST_IOCTL_CHANNEL_READ_3D_REG     _IOWR(NVHOST_IOCTL_MAGIC, 8, struct nvhost_read_3d_reg_args)
 #define NVHOST_IOCTL_GET_TIMEDOUT            _IOR(NVHOST_IOCTL_MAGIC, 12, struct nvhost_get_param_args)
 #define NVHOST_IOCTL_SET_PRIORITY            _IOW(NVHOST_IOCTL_MAGIC, 13, struct nvhost_set_priority_args)
 
@@ -375,5 +381,22 @@ int nvhost_client_wait(struct nvhost_client *client, uint32_t fence,
 		fprintf(stderr, "syncpt %u: value:%u != thresh:%u\n",
 			args.id, args.value, args.thresh);
 
+	return 0;
+}
+
+int nvhost_read_3d_reg(struct nvhost_client *client, int offset, uint32_t *val)
+{
+	struct nvhost_read_3d_reg_args args;
+	int err;
+
+	memset(&args, 0, sizeof(args));
+	args.offset = offset;
+
+	err = ioctl(client->fd, NVHOST_IOCTL_CHANNEL_READ_3D_REG, &args);
+	if (err < 0)
+		return -errno;
+
+	if (val)
+		*val = args.value;
 	return 0;
 }

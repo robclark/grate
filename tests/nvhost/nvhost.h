@@ -100,5 +100,6 @@ int nvhost_client_submit(struct nvhost_client *client, struct nvhost_job *job);
 int nvhost_client_flush(struct nvhost_client *client, uint32_t *fencep);
 int nvhost_client_wait(struct nvhost_client *client, uint32_t fence,
 		       uint32_t timeout);
+int nvhost_read_3d_reg(struct nvhost_client *client, int offset, uint32_t *val);
 
 #endif
