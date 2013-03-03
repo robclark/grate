@@ -914,7 +914,7 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	struct nvhost_pushbuf *pb;
 	unsigned int depth = 32;
 	struct nvhost_job *job;
-	uint32_t format, pitch;
+	uint32_t format;
 	uint16_t *indices;
 	uint32_t fence;
 	int err;
@@ -1025,13 +1025,11 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 
 	if (depth == 16) {
 		format = NVHOST_GR3D_FORMAT_RGB565;
-		pitch = fb->width * 2;
 	} else {
 		format = NVHOST_GR3D_FORMAT_RGBA8888;
-		pitch = fb->width * 4;
 	}
 
-	nvhost_pushbuf_push(pb, 0x04000000 | (pitch << 8) | format << 2 | 0x1);
+	nvhost_pushbuf_push(pb, 0x04000000 | (fb->pitch << 8) | format << 2 | 0x1);
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x903, 0x01));
 	nvhost_pushbuf_push(pb, 0x00000002);
