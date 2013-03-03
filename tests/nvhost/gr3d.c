@@ -849,6 +849,19 @@ void nvhost_gr3d_scissor(struct nvhost_pushbuf *pb, int x, int y, int w, int h)
 	nvhost_pushbuf_push(pb, ((y + h) & 0xffff) | (y << 16)); /* 0x351 */
 }
 
+void nvhost_gr3d_line_width(struct nvhost_pushbuf *pb, float w)
+{
+	union {
+		uint32_t u;
+		float f;
+	} value;
+
+	value.f = w / 2.0f;
+
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x34d, 0x01));
+	nvhost_pushbuf_push(pb, value.u);
+}
+
 int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 			 struct nvmap_framebuffer *fb)
 {
