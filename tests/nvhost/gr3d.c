@@ -44,6 +44,17 @@
 #define NVHOST_GR3D_PRIMITIVE_TRIANGLE_STRIP 0x5
 #define NVHOST_GR3D_PRIMITIVE_TRIANGLE_FAN   0x6
 
+#define NVHOST_GR3D_ATTRIB_UBYTE       0x0
+#define NVHOST_GR3D_ATTRIB_UBYTE_NORM  0x1
+#define NVHOST_GR3D_ATTRIB_SBYTE       0x2
+#define NVHOST_GR3D_ATTRIB_SBYTE_NORM  0x3
+#define NVHOST_GR3D_ATTRIB_USHORT      0x4
+#define NVHOST_GR3D_ATTRIB_USHORT_NORM 0x5
+#define NVHOST_GR3D_ATTRIB_SSHORT      0x6
+#define NVHOST_GR3D_ATTRIB_SSHORT_NORM 0x7
+#define NVHOST_GR3D_ATTRIB_FIXED       0xc
+#define NVHOST_GR3D_ATTRIB_FLOAT       0xd
+
 static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
 {
 	const unsigned int num_attributes = 16;
@@ -875,6 +886,16 @@ void nvhost_gr3d_line_width(struct nvhost_pushbuf *pb, float w)
 	nvhost_pushbuf_push(pb, value.u);
 }
 
+void nvhost_gr3d_attrib_pointer(struct nvhost_pushbuf *pb,
+    int index, int size, int type, int stride,
+    struct nvmap_handle *buffer, size_t offset)
+{
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x100 + index * 2, 0x0002));
+	nvhost_pushbuf_relocate(pb, buffer, offset, 0);
+	nvhost_pushbuf_push(pb, 0xdeadbeef); /* 0x121 */
+	nvhost_pushbuf_push(pb, (stride << 8) | (size << 4) | type);
+}
+
 void nvhost_gr3d_draw_indexed(struct nvhost_pushbuf *pb,
     int mode, int count, int type,
     struct nvmap_handle *buffer, size_t offset)
@@ -1236,14 +1257,9 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, 0xdeadbeef);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0xe31, 0x01));
 	nvhost_pushbuf_push(pb, 0x00000000);
-	/* vertex position attribute */
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x100, 0x01));
-	nvhost_pushbuf_relocate(pb, gr3d->attributes, 0x30, 0);
-	nvhost_pushbuf_push(pb, 0xdeadbeef);
-	/* vertex color attribute */
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x102, 0x01));
-	nvhost_pushbuf_relocate(pb, gr3d->attributes, 0, 0);
-	nvhost_pushbuf_push(pb, 0xdeadbeef);
+
+	nvhost_gr3d_attrib_pointer(pb, 0, 4, NVHOST_GR3D_ATTRIB_FLOAT, sizeof(float) * 4, gr3d->attributes, 0x30);
+	nvhost_gr3d_attrib_pointer(pb, 1, 4, NVHOST_GR3D_ATTRIB_FLOAT, sizeof(float) * 4, gr3d->attributes, 0);
 
 	nvhost_gr3d_viewport(pb, 0, 0, fb->width / 2, fb->height);
 
