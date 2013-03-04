@@ -105,23 +105,31 @@ struct nvmap_cache_op {
 #define NVMAP_IOCTL_CACHE _IOW(NVMAP_IOCTL_MAGIC, 12, struct nvmap_cache_op)
 #define NVMAP_IOCTL_GET_ID _IOWR(NVMAP_IOCTL_MAGIC, 13, struct nvmap_create_handle)
 
-static void detile(void *target, struct nvmap_framebuffer *fb,
+static void detile(void *target, unsigned int pitch, struct nvmap_framebuffer *fb,
 		   unsigned int tx, unsigned int ty)
 {
-	const unsigned int nx = fb->pitch / tx, ny = fb->height / ty;
-	const unsigned int size = tx * ty, pitch = tx * nx;
+	const size_t line_width = fb->width * (fb->depth / 8);
+	const unsigned int nx = (line_width + tx - 1) / tx,
+	                   ny = (fb->height + ty - 1) / ty;
 	const void *source = fb->handle->ptr;
 	unsigned int i, j, k;
 
 	for (j = 0; j < ny; j++) {
 		for (i = 0; i < nx; i++) {
-			unsigned int to = (j * nx * size) + (i * tx);
-			unsigned int so = (j * nx + i) * size;
+			unsigned int to = j * ty * pitch + i * tx;
+			unsigned int so = j * ty * fb->pitch + i * tx * ty;
 
-			for (k = 0; k < ty; k++) {
+			unsigned int w = line_width - i * tx;
+			unsigned int h = fb->height - j * ty;
+			if (w > tx)
+				w = tx;
+			if (h > ty)
+				h = ty;
+
+			for (k = 0; k < h; k++) {
 				memcpy(target + to + k * pitch,
 				       source + so + k * tx,
-				       tx);
+				       w);
 			}
 		}
 	}
@@ -386,7 +394,7 @@ int nvmap_framebuffer_save(struct nvmap_framebuffer *fb, const char *filename)
 	if (!buffer)
 		return ENOMEM;
 
-	detile(buffer, fb, 16, 16);
+	detile(buffer, stride, fb, 16, 16);
 
 	rows = malloc(fb->height * sizeof(png_bytep));
 	if (!rows) {
