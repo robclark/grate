@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	fb = nvmap_framebuffer_create(nvmap, width, height, 32);
+	fb = nvmap_framebuffer_create(nvmap, width, height, 32, 1);
 	if (!fb) {
 		return 1;
 	}

@@ -248,7 +248,7 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x35, 1));
 	nvhost_pushbuf_push(pb, color);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x46, 1));
-	nvhost_pushbuf_push(pb, 0x00100000);
+	nvhost_pushbuf_push(pb, fb->tiled << 20);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x38, 5));
 	nvhost_pushbuf_push(pb, fb->height << 16 | fb->width);
 	nvhost_pushbuf_push(pb, 0x00000000);

@@ -294,7 +294,8 @@ int nvmap_handle_writeback_invalidate(struct nvmap *nvmap,
 struct nvmap_framebuffer *nvmap_framebuffer_create(struct nvmap *nvmap,
 						   unsigned short width,
 						   unsigned short height,
-						   unsigned short depth)
+						   unsigned short depth,
+						   unsigned char tiled)
 {
 	struct nvmap_framebuffer *fb;
 	int err;
@@ -303,13 +304,18 @@ struct nvmap_framebuffer *nvmap_framebuffer_create(struct nvmap *nvmap,
 	if (!fb)
 		return NULL;
 
-	fb->pitch = ROUNDUP(width * (depth / 8), 128);
+	if (tiled)
+		fb->pitch = ROUNDUP(width * (depth / 8), 128);
+	else
+		fb->pitch = ROUNDUP(width * (depth / 8), 32);
+
 	fb->width = width;
 	fb->height = height;
 	fb->depth = depth;
+	fb->tiled = tiled ? 1 : 0;
 	fb->nvmap = nvmap;
 
-	fb->handle = nvmap_handle_create(nvmap, fb->pitch * ROUNDUP(height, 16));
+	fb->handle = nvmap_handle_create(nvmap, fb->pitch * (tiled ? ROUNDUP(height, 16) : height));
 	if (!fb->handle) {
 		free(fb);
 		return NULL;
@@ -394,7 +400,15 @@ int nvmap_framebuffer_save(struct nvmap_framebuffer *fb, const char *filename)
 	if (!buffer)
 		return ENOMEM;
 
-	detile(buffer, stride, fb, 16, 16);
+	memset(buffer, 0, stride * fb->height);
+
+	if (fb->tiled)
+		detile(buffer, stride, fb, 16, 16);
+	else {
+		for (i = 0; i < fb->height; ++i)
+			memcpy(buffer + i * stride,
+			    fb->handle->ptr + i * fb->pitch, stride);
+	}
 
 	rows = malloc(fb->height * sizeof(png_bytep));
 	if (!rows) {

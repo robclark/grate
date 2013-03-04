@@ -1029,7 +1029,7 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 		format = NVHOST_GR3D_FORMAT_RGBA8888;
 	}
 
-	nvhost_pushbuf_push(pb, 0x04000000 | (fb->pitch << 8) | format << 2 | 0x1);
+	nvhost_pushbuf_push(pb, (fb->tiled << 26) | (fb->pitch << 8) | format << 2 | 0x1);
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x903, 0x01));
 	nvhost_pushbuf_push(pb, 0x00000002);

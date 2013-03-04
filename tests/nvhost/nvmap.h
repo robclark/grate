@@ -65,7 +65,7 @@ struct nvmap_framebuffer {
 	unsigned short height;
 	unsigned short depth;
 	unsigned short pitch;
-
+	unsigned char tiled : 1;
 	struct nvmap_handle *handle;
 	struct nvmap *nvmap;
 };
@@ -73,7 +73,8 @@ struct nvmap_framebuffer {
 struct nvmap_framebuffer *nvmap_framebuffer_create(struct nvmap *nvmap,
 						   unsigned short width,
 						   unsigned short height,
-						   unsigned short depth);
+						   unsigned short depth,
+						   unsigned char tiled);
 void nvmap_framebuffer_free(struct nvmap_framebuffer *fb);
 int nvmap_framebuffer_save(struct nvmap_framebuffer *fb, const char *filename);
 
