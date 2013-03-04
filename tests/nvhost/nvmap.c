@@ -303,13 +303,13 @@ struct nvmap_framebuffer *nvmap_framebuffer_create(struct nvmap *nvmap,
 	if (!fb)
 		return NULL;
 
-	fb->pitch = width * (depth / 8);
+	fb->pitch = ROUNDUP(width * (depth / 8), 128);
 	fb->width = width;
 	fb->height = height;
 	fb->depth = depth;
 	fb->nvmap = nvmap;
 
-	fb->handle = nvmap_handle_create(nvmap, fb->pitch * height);
+	fb->handle = nvmap_handle_create(nvmap, fb->pitch * ROUNDUP(height, 16));
 	if (!fb->handle) {
 		free(fb);
 		return NULL;
