@@ -232,7 +232,7 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x09, 9));
 	nvhost_pushbuf_push(pb, 0x0000003a);
 	nvhost_pushbuf_push(pb, 0x00000000);
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x1e, 7));
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x1e, 3));
 	nvhost_pushbuf_push(pb, 0x00000000);
 
 	if (fb->depth == 16)
