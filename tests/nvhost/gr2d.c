@@ -48,7 +48,10 @@ static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d)
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x051, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x052, 0x00));
+
+	/* acquire mlock */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(0x00, 0x00000002));
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x009, 0x0009));
 	nvhost_pushbuf_push(pb, 0x00000038);
 	nvhost_pushbuf_push(pb, 0x00000001);
@@ -83,7 +86,12 @@ static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d)
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x037, 0x0003));
 	nvhost_pushbuf_push(pb, 0x00000001);
 	nvhost_pushbuf_push(pb, 0x00000001);
+
+	/* release mlock */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(0x01, 0x00000002));
+
+	/* increase syncpoint */
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x01, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x0001));
 	nvhost_pushbuf_push(pb, 0x00000112);
 
@@ -228,31 +236,48 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0, 0x51, 0));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0, 0x51, 0));
+
+	/* acquire mlock */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(0, 0x01));
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x09, 9));
 	nvhost_pushbuf_push(pb, 0x0000003a);
 	nvhost_pushbuf_push(pb, 0x00000000);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x1e, 3));
 	nvhost_pushbuf_push(pb, 0x00000000);
 
+	uint32_t val = 0;
+	val |= 1 << 6; /* solid color fill */
+	val |= 1 << 3; /* turbofill */
 	if (fb->depth == 16)
-		nvhost_pushbuf_push(pb, 0x00010044); /* 16-bit depth */
+		val |= (1 << 16); /* 16-bit color depth */
 	else
-		nvhost_pushbuf_push(pb, 0x00020044); /* 32-bit depth */
+		val |= (2 << 16); /* 32-bit color depth */
 
+	nvhost_pushbuf_push(pb, val);
 	nvhost_pushbuf_push(pb, 0x000000cc);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x2b, 9));
 	nvhost_pushbuf_relocate(pb, fb->handle, 0, 0);
 	nvhost_pushbuf_push(pb, 0xdeadbeef);
 	nvhost_pushbuf_push(pb, fb->pitch);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x35, 1));
 	nvhost_pushbuf_push(pb, color);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x46, 1));
 	nvhost_pushbuf_push(pb, fb->tiled << 20);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x38, 5));
 	nvhost_pushbuf_push(pb, fb->height << 16 | fb->width);
 	nvhost_pushbuf_push(pb, 0x00000000);
+
+	/* release mlock */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(1, 1));
+
+	/* increase syncpoint */
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0, 0x1, 0));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x00, 1));
 	nvhost_pushbuf_push(pb, 0x00000112);
 
