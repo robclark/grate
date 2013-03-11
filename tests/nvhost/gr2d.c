@@ -204,7 +204,8 @@ void nvhost_gr2d_close(struct nvhost_gr2d *gr2d)
 }
 
 int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
-		      float red, float green, float blue, float alpha)
+		      float red, float green, float blue, float alpha,
+		      int x, int y, int width, int height)
 {
 	struct nvhost_pushbuf *pb;
 	struct nvhost_job *job;
@@ -270,8 +271,8 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 	nvhost_pushbuf_push(pb, fb->tiled << 20);
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x38, 5));
-	nvhost_pushbuf_push(pb, fb->height << 16 | fb->width);
-	nvhost_pushbuf_push(pb, 0x00000000);
+	nvhost_pushbuf_push(pb, (height << 16) | width);
+	nvhost_pushbuf_push(pb, (y << 16) | x);
 
 	/* release mlock */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(1, 1));

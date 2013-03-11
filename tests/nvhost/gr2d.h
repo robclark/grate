@@ -38,6 +38,7 @@ struct nvhost_gr2d *nvhost_gr2d_open(struct nvmap *nvmap,
 				     struct nvhost_ctrl *ctrl);
 void nvhost_gr2d_close(struct nvhost_gr2d *gr2d);
 int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
-		      float red, float green, float blue, float alpha);
+		      float red, float green, float blue, float alpha,
+		      int x, int y, int width, int height);
 
 #endif

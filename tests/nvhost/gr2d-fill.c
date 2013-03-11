@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	err = nvhost_gr2d_clear(gr2d, fb, 1.0f, 0.0f, 1.0f, 1.0f);
+	err = nvhost_gr2d_clear(gr2d, fb, 1.0f, 0.0f, 1.0f, 1.0f, 0, 0, fb->width, fb->height);
 	if (err < 0) {
 		return 1;
 	}
