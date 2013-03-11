@@ -91,9 +91,7 @@ static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d)
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(0x01, 0x00000002));
 
 	/* increase syncpoint */
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x01, 0x00));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x0001));
-	nvhost_pushbuf_push(pb, 0x00000112);
+	nvhost_incr_syncpt(&gr2d->client, pb, OP_DONE);
 
 	err = nvhost_client_submit(&gr2d->client, job);
 	if (err < 0) {
@@ -246,7 +244,7 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 	nvhost_pushbuf_push(pb, 0x00000000);
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x1e, 3));
-	nvhost_pushbuf_push(pb, 0x00000000);
+	nvhost_pushbuf_push(pb, 0x00000000); /* 0x01e */
 
 	uint32_t val = 0;
 	val |= 1 << 6; /* solid color fill */
@@ -255,9 +253,10 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 		val |= (1 << 16); /* 16-bit color depth */
 	else
 		val |= (2 << 16); /* 32-bit color depth */
+	nvhost_pushbuf_push(pb, val); /* 0x01f */
 
-	nvhost_pushbuf_push(pb, val);
-	nvhost_pushbuf_push(pb, 0x000000cc);
+	val = 0xcc; /* ROP */
+	nvhost_pushbuf_push(pb, val); /* 0x020 */
 
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_MASK(0x2b, 9));
 	nvhost_pushbuf_relocate(pb, fb->handle, 0, 0);
@@ -278,9 +277,7 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_EXTEND(1, 1));
 
 	/* increase syncpoint */
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0, 0x1, 0));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x00, 1));
-	nvhost_pushbuf_push(pb, 0x00000112);
+	nvhost_incr_syncpt(&gr2d->client, pb, OP_DONE);
 
 	err = nvhost_client_submit(&gr2d->client, job);
 	if (err < 0) {

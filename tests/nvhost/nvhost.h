@@ -40,6 +40,11 @@
 #define NVHOST_OPCODE_EXTEND(subop, value) \
 	((0xe << 28) | (((subop) & 0xf) << 24) | ((value) & 0xffffff))
 
+#define IMMEDIATE   0
+#define OP_DONE     1
+#define RD_DONE     2
+#define REG_WR_SAFE 3
+
 struct nvhost_ctrl {
 	int fd;
 };
@@ -101,5 +106,11 @@ int nvhost_client_flush(struct nvhost_client *client, uint32_t *fencep);
 int nvhost_client_wait(struct nvhost_client *client, uint32_t fence,
 		       uint32_t timeout);
 int nvhost_read_3d_reg(struct nvhost_client *client, int offset, uint32_t *val);
+
+static inline void nvhost_incr_syncpt(struct nvhost_client *client, struct nvhost_pushbuf *pb, int cond)
+{
+	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x00, 1));
+	nvhost_pushbuf_push(pb, (cond << 8) | client->syncpt);
+}
 
 #endif

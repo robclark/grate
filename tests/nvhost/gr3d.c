@@ -580,9 +580,10 @@ static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x300, 0x0002));
 	nvhost_pushbuf_push(pb, 0x00000000);
 	nvhost_pushbuf_push(pb, 0x00000000);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x060, 0x00));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x0001));
-	nvhost_pushbuf_push(pb, 0x00000216);
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x001, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x009, 0x0001));
 	nvhost_pushbuf_push(pb, 0x16030001);
@@ -720,8 +721,9 @@ static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xa0a, 0x0000));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0x544, 0x0000));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xe27, 0x0001));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x0001));
-	nvhost_pushbuf_push(pb, 0x00000116);
+
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x000, 0x001, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x00c, 0x0001));
 	nvhost_pushbuf_push(pb, 0x03000001);
@@ -1005,10 +1007,9 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x34c, 0x2));
 	nvhost_pushbuf_push(pb, 0x00000002);
 	nvhost_pushbuf_push(pb, 0x3f000000);
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x1));
-	nvhost_pushbuf_push(pb, 0x00000216);
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x1));
-	nvhost_pushbuf_push(pb, 0x00000216);
+
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
 
 	nvhost_gr3d_viewport(pb, 0, 0, fb->width, fb->height);
 
@@ -1096,10 +1097,9 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, 0x00000030);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xa00, 0xe00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xa08, 0x100));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000216);
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000216);
+
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
 
 	/*
 	  Command Buffer:
@@ -1231,9 +1231,10 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x344, 0x02));
 	nvhost_pushbuf_push(pb, 0x00000000);
 	nvhost_pushbuf_push(pb, 0x00000000);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000116);
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x01, 0x00));
 	/* XXX: don't wait for syncpoint */
 	/*
@@ -1242,9 +1243,10 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	*/
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xa00, 0xe01));
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x00, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000216);
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x01, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x009, 0x01));
 	nvhost_pushbuf_push(pb, 0x16030006);
@@ -1271,25 +1273,32 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_gr3d_draw_indexed(pb, NVHOST_GR3D_PRIMITIVE_LINE_LOOP, 3,
 	    NVHOST_GR3D_INDEX_UINT16, gr3d->attributes, 0x60);
 
+	/* syncpt wat? */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_IMM(0xe27, 0x02));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000216);
+	nvhost_incr_syncpt(&gr3d->client, pb, RD_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x000, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000116);
+	nvhost_incr_syncpt(&gr3d->client, pb, OP_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x01, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x09, 0x01));
 	nvhost_pushbuf_push(pb, 0x16030008);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x01, 0x00));
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x0c, 0x01));
 	nvhost_pushbuf_push(pb, 0x03000008);
+
+	/* increase syncpt */
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x00, 0x01));
-	nvhost_pushbuf_push(pb, 0x00000116);
+	nvhost_incr_syncpt(&gr3d->client, pb, OP_DONE);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x01, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x0c, 0x01));
 	nvhost_pushbuf_push(pb, 0x03000001);
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
 
 	err = nvhost_client_submit(&gr3d->client, job);
