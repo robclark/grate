@@ -64,7 +64,7 @@ static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
 	uint32_t fence;
 	int err;
 
-	job = nvhost_job_create(gr3d->client.syncpt, 2);
+	job = nvhost_job_create(gr3d->client.syncpt, 2, 0);
 	if (!job)
 		return -ENOMEM;
 
@@ -921,8 +921,8 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	uint32_t fence;
 	int err;
 
-	/* XXX: count syncpoint increments in command stream */
-	job = nvhost_job_create(gr3d->client.syncpt, 9);
+	/* XXX: count syncpoint increments and waitchks in command stream */
+	job = nvhost_job_create(gr3d->client.syncpt, 9, 0);
 	if (!job)
 		return -ENOMEM;
 

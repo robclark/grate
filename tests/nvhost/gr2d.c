@@ -36,7 +36,7 @@ static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d)
 	uint32_t fence;
 	int err;
 
-	job = nvhost_job_create(gr2d->client.syncpt, 1);
+	job = nvhost_job_create(gr2d->client.syncpt, 1, 0);
 	if (!job)
 		return -ENOMEM;
 
@@ -223,7 +223,7 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 
 	printf("color: %08x\n", color);
 
-	job = nvhost_job_create(gr2d->client.syncpt, 1);
+	job = nvhost_job_create(gr2d->client.syncpt, 1, 0);
 	if (!job)
 		return -ENOMEM;
 

@@ -59,6 +59,12 @@ struct nvhost_pushbuf_reloc {
 	unsigned long shift;
 };
 
+struct nvhost_pushbuf_waitchk {
+	unsigned long offset;
+	unsigned long syncpt_id;
+	unsigned long thresh;
+};
+
 struct nvhost_pushbuf {
 	struct nvmap_handle *handle;
 	unsigned long offset;
@@ -66,6 +72,9 @@ struct nvhost_pushbuf {
 
 	struct nvhost_pushbuf_reloc *relocs;
 	unsigned long num_relocs;
+
+	struct nvhost_pushbuf_waitchk *waitchks;
+	unsigned long num_waitchks;
 
 	uint32_t *ptr;
 };
@@ -76,12 +85,13 @@ struct nvhost_pushbuf *nvhost_pushbuf_create(struct nvmap_handle *handle,
 struct nvhost_job {
 	uint32_t syncpt;
 	uint32_t syncpt_incrs;
+	uint32_t waitchks;
 
 	struct nvhost_pushbuf *pushbufs;
 	unsigned int num_pushbufs;
 };
 
-struct nvhost_job *nvhost_job_create(uint32_t syncpt, uint32_t increments);
+struct nvhost_job *nvhost_job_create(uint32_t syncpt, uint32_t increments, uint32_t waits);
 void nvhost_job_free(struct nvhost_job *job);
 struct nvhost_pushbuf *nvhost_job_append(struct nvhost_job *job,
 					 struct nvmap_handle *handle,
@@ -90,6 +100,7 @@ int nvhost_pushbuf_push(struct nvhost_pushbuf *pb, uint32_t word);
 int nvhost_pushbuf_relocate(struct nvhost_pushbuf *pb,
 			    struct nvmap_handle *target, unsigned long offset,
 			    unsigned long shift);
+int nvhost_pushbuf_wait(struct nvhost_pushbuf *pb, unsigned long syncpt_id, unsigned long thresh);
 
 struct nvhost_client {
 	struct nvhost_ctrl *ctrl;

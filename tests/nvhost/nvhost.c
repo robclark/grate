@@ -154,7 +154,7 @@ void nvhost_client_exit(struct nvhost_client *client)
 	close(client->fd);
 }
 
-struct nvhost_job *nvhost_job_create(uint32_t syncpt, uint32_t increments)
+struct nvhost_job *nvhost_job_create(uint32_t syncpt, uint32_t increments, uint32_t waits)
 {
 	struct nvhost_job *job;
 
@@ -164,6 +164,7 @@ struct nvhost_job *nvhost_job_create(uint32_t syncpt, uint32_t increments)
 
 	job->syncpt = syncpt;
 	job->syncpt_incrs = increments;
+	job->waitchks = waits;
 
 	return job;
 }
@@ -242,6 +243,30 @@ int nvhost_pushbuf_relocate(struct nvhost_pushbuf *pb,
 	return 0;
 }
 
+int nvhost_pushbuf_wait(struct nvhost_pushbuf *pb,
+		        unsigned long syncpt_id,
+		        unsigned long thresh)
+{
+	struct nvhost_pushbuf_waitchk *waitchk;
+	size_t size;
+
+	size = (pb->num_waitchks + 1) * sizeof(*waitchk);
+
+	waitchk = realloc(pb->waitchks, size);
+	if (!waitchk)
+		return -ENOMEM;
+
+	pb->waitchks = waitchk;
+
+	waitchk = &pb->waitchks[pb->num_waitchks++];
+
+	waitchk->offset = nvmap_handle_get_offset(pb->handle, pb->ptr);
+	waitchk->syncpt_id = syncpt_id;
+	waitchk->thresh = thresh;
+
+	return 0;
+}
+
 struct nvhost_cmdbuf {
 	uint32_t mem;
 	uint32_t offset;
@@ -255,6 +280,13 @@ struct nvhost_reloc {
 	uint32_t target_offset;
 };
 
+struct nvhost_waitchk {
+	uint32_t mem;
+	uint32_t offset;
+	uint32_t syncpt_id;
+	uint32_t thresh;
+};
+
 struct nvhost_reloc_shift {
 	uint32_t shift;
 };
@@ -262,7 +294,7 @@ struct nvhost_reloc_shift {
 int nvhost_client_submit(struct nvhost_client *client, struct nvhost_job *job)
 {
 	struct nvhost_submit_hdr_ext args;
-	unsigned long num_relocs = 0;
+	unsigned long num_relocs = 0, num_waitchks = 0;
 	unsigned int i, j;
 	int err;
 
@@ -277,6 +309,7 @@ int nvhost_client_submit(struct nvhost_client *client, struct nvhost_job *job)
 		}
 
 		num_relocs += pb->num_relocs;
+		num_waitchks += pb->num_waitchks;
 	}
 
 	memset(&args, 0, sizeof(args));
@@ -285,8 +318,7 @@ int nvhost_client_submit(struct nvhost_client *client, struct nvhost_job *job)
 	args.num_cmdbufs = job->num_pushbufs;
 	args.num_relocs = num_relocs;
 	args.submit_version = 2;
-	/* XXX: implement wait checks */
-	args.num_waitchks = 0;
+	args.num_waitchks = num_waitchks;
 	args.waitchk_mask = 0;
 
 	err = ioctl(client->fd, NVHOST_IOCTL_CHANNEL_SUBMIT_EXT, &args);
@@ -326,6 +358,25 @@ int nvhost_client_submit(struct nvhost_client *client, struct nvhost_job *job)
 			err = write(client->fd, &reloc, sizeof(reloc));
 			if (err < 0) {
 			}
+		}
+	}
+
+	for (i = 0; i < job->num_pushbufs; i++) {
+		struct nvhost_pushbuf *pb = &job->pushbufs[i];
+
+		for (j = 0; j < pb->num_waitchks; j++) {
+			struct nvhost_pushbuf_waitchk *w = &pb->waitchks[j];
+			struct nvhost_waitchk waitchk;
+
+			memset(&waitchk, 0, sizeof(waitchk));
+			waitchk.mem = pb->handle->id;
+			waitchk.offset = w->offset;
+			waitchk.syncpt_id = w->syncpt_id;
+			waitchk.thresh = w->thresh;
+
+			err = write(client->fd, &waitchk, sizeof(waitchk));
+			if (err < 0)
+				perror("write");
 		}
 	}
 
