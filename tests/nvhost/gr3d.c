@@ -55,13 +55,12 @@
 #define NVHOST_GR3D_ATTRIB_FIXED       0xc
 #define NVHOST_GR3D_ATTRIB_FLOAT       0xd
 
-static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
+static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d, struct nvhost_fence *fence)
 {
 	const unsigned int num_attributes = 16;
 	struct nvhost_pushbuf *pb;
 	struct nvhost_job *job;
 	unsigned int i;
-	uint32_t fence;
 	int err;
 
 	job = nvhost_job_create(gr3d->client.syncpt, 2, 0);
@@ -733,21 +732,19 @@ static int nvhost_gr3d_init(struct nvhost_gr3d *gr3d)
 	if (err < 0)
 		return err;
 
-	err = nvhost_client_flush(&gr3d->client, &fence);
+	fence->syncpt = gr3d->client.syncpt;
+	err = nvhost_client_flush(&gr3d->client, &fence->thresh);
 	if (err < 0)
 		return err;
 
-	printf("fence: %u\n", fence);
-
-	err = nvhost_client_wait(&gr3d->client, fence, -1);
-	if (err < 0)
-		return err;
+	printf("fence: %u\n", fence->thresh);
 
 	return 0;
 }
 
 struct nvhost_gr3d *nvhost_gr3d_open(struct nvmap *nvmap,
-				     struct nvhost_ctrl *ctrl)
+				     struct nvhost_ctrl *ctrl,
+				     struct nvhost_fence *fence)
 {
 	struct nvhost_gr3d *gr3d;
 	int err, fd;
@@ -819,7 +816,7 @@ struct nvhost_gr3d *nvhost_gr3d_open(struct nvmap *nvmap,
 		return NULL;
 	}
 
-	err = nvhost_gr3d_init(gr3d);
+	err = nvhost_gr3d_init(gr3d, fence);
 	if (err < 0) {
 		nvmap_handle_free(nvmap, gr3d->attributes);
 		nvmap_handle_free(nvmap, gr3d->buffer);
@@ -910,7 +907,8 @@ void nvhost_gr3d_draw_indexed(struct nvhost_pushbuf *pb,
 }
 
 int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
-			 struct nvmap_framebuffer *fb)
+			 struct nvmap_framebuffer *fb,
+			 struct nvhost_fence *fence)
 {
 	float *attr = gr3d->attributes->ptr;
 	struct nvhost_pushbuf *pb;
@@ -918,11 +916,10 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	struct nvhost_job *job;
 	uint32_t format;
 	uint16_t *indices;
-	uint32_t fence;
 	int err;
 
 	/* XXX: count syncpoint increments and waitchks in command stream */
-	job = nvhost_job_create(gr3d->client.syncpt, 9, 0);
+	job = nvhost_job_create(gr3d->client.syncpt, 9, fence->syncpt ? 1 : 0);
 	if (!job)
 		return -ENOMEM;
 
@@ -1222,11 +1219,13 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x120, 0x01));
 	nvhost_pushbuf_push(pb, 0x00030081);
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x01, 0x00));
-	/* XXX: don't wait for syncpoint */
-	/*
-	nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x008, 0x01));
-	nvhost_pushbuf_push(pb, 0x120000b1);
-	*/
+
+	if (fence->syncpt) {
+		nvhost_pushbuf_push(pb, NVHOST_OPCODE_NONINCR(0x008, 0x01));
+		nvhost_pushbuf_wait(pb, fence->syncpt, fence->thresh);
+		nvhost_pushbuf_push(pb, 0xbadf00d);
+	}
+
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_SETCL(0x00, 0x60, 0x00));
 	nvhost_pushbuf_push(pb, NVHOST_OPCODE_INCR(0x344, 0x02));
 	nvhost_pushbuf_push(pb, 0x00000000);
@@ -1306,17 +1305,13 @@ int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
 		return err;
 	}
 
-	err = nvhost_client_flush(&gr3d->client, &fence);
+	fence->syncpt = gr3d->client.syncpt;
+	err = nvhost_client_flush(&gr3d->client, &fence->thresh);
 	if (err < 0) {
 		return err;
 	}
 
-	printf("fence: %u\n", fence);
-
-	err = nvhost_client_wait(&gr3d->client, fence, -1);
-	if (err < 0) {
-		return err;
-	}
+	printf("fence: %u\n", fence->thresh);
 
 	return 0;
 }

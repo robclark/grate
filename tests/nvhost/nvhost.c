@@ -413,15 +413,14 @@ int nvhost_client_flush(struct nvhost_client *client, uint32_t *fencep)
 	return 0;
 }
 
-int nvhost_client_wait(struct nvhost_client *client, uint32_t fence,
-		       uint32_t timeout)
+int nvhost_client_wait(struct nvhost_client *client, struct nvhost_fence *fence, uint32_t timeout)
 {
 	struct nvhost_ctrl_syncpt_waitex_args args;
 	int err;
 
 	memset(&args, 0, sizeof(args));
-	args.id = client->syncpt;
-	args.thresh = fence;
+	args.id = fence->syncpt;
+	args.thresh = fence->thresh;
 	args.timeout = timeout;
 
 	err = ioctl(client->ctrl->fd, NVHOST_IOCTL_CTRL_SYNCPT_WAITEX, &args);

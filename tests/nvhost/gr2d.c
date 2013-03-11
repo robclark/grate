@@ -29,11 +29,11 @@
 
 #include "gr2d.h"
 
-static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d)
+static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d,
+			    struct nvhost_fence *fence)
 {
 	struct nvhost_pushbuf *pb;
 	struct nvhost_job *job;
-	uint32_t fence;
 	int err;
 
 	job = nvhost_job_create(gr2d->client.syncpt, 1, 0);
@@ -101,23 +101,20 @@ static int nvhost_gr2d_init(struct nvhost_gr2d *gr2d)
 
 	nvhost_job_free(job);
 
-	err = nvhost_client_flush(&gr2d->client, &fence);
+	fence->syncpt = gr2d->client.syncpt;
+	err = nvhost_client_flush(&gr2d->client, &fence->thresh);
 	if (err < 0) {
 		return err;
 	}
 
-	printf("fence: %u\n", fence);
-
-	err = nvhost_client_wait(&gr2d->client, fence, -1);
-	if (err < 0) {
-		return err;
-	}
+	printf("fence: %u\n", fence->thresh);
 
 	return 0;
 }
 
 struct nvhost_gr2d *nvhost_gr2d_open(struct nvmap *nvmap,
-				     struct nvhost_ctrl *ctrl)
+				     struct nvhost_ctrl *ctrl,
+				     struct nvhost_fence *fence)
 {
 	struct nvhost_gr2d *gr2d;
 	int err, fd;
@@ -179,7 +176,7 @@ struct nvhost_gr2d *nvhost_gr2d_open(struct nvmap *nvmap,
 		return NULL;
 	}
 
-	err = nvhost_gr2d_init(gr2d);
+	err = nvhost_gr2d_init(gr2d, fence);
 	if (err < 0) {
 		nvmap_handle_free(nvmap, gr2d->scratch);
 		nvmap_handle_free(nvmap, gr2d->buffer);
@@ -202,12 +199,13 @@ void nvhost_gr2d_close(struct nvhost_gr2d *gr2d)
 }
 
 int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
+		      struct nvhost_fence *fence,
 		      float red, float green, float blue, float alpha,
 		      int x, int y, int width, int height)
 {
 	struct nvhost_pushbuf *pb;
 	struct nvhost_job *job;
-	uint32_t fence, color;
+	uint32_t color;
 	int err;
 
 	if (fb->depth == 16) {
@@ -287,17 +285,13 @@ int nvhost_gr2d_clear(struct nvhost_gr2d *gr2d, struct nvmap_framebuffer *fb,
 
 	nvhost_job_free(job);
 
-	err = nvhost_client_flush(&gr2d->client, &fence);
+	fence->syncpt = gr2d->client.syncpt;
+	err = nvhost_client_flush(&gr2d->client, &fence->thresh);
 	if (err < 0) {
 		return err;
 	}
 
-	printf("fence: %u\n", fence);
-
-	err = nvhost_client_wait(&gr2d->client, fence, -1);
-	if (err < 0) {
-		return err;
-	}
+	printf("fence: %u\n", fence->thresh);
 
 	return 0;
 }

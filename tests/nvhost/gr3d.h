@@ -35,9 +35,11 @@ struct nvhost_gr3d {
 };
 
 struct nvhost_gr3d *nvhost_gr3d_open(struct nvmap *nvmap,
-				     struct nvhost_ctrl *ctrl);
+				     struct nvhost_ctrl *ctrl,
+				     struct nvhost_fence *fence);
 void nvhost_gr3d_close(struct nvhost_gr3d *gr3d);
 int nvhost_gr3d_triangle(struct nvhost_gr3d *gr3d,
-			 struct nvmap_framebuffer *fb);
+			 struct nvmap_framebuffer *fb,
+			 struct nvhost_fence *fence);
 
 #endif

@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 	unsigned int width, height;
 	struct nvhost_gr2d *gr2d;
 	struct nvhost_ctrl *ctrl;
+	struct nvhost_fence fence = { 0, 0 };
 	struct nvmap *nvmap;
 	int err;
 
@@ -59,12 +60,17 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	gr2d = nvhost_gr2d_open(nvmap, ctrl);
+	gr2d = nvhost_gr2d_open(nvmap, ctrl, &fence);
 	if (!gr2d) {
 		return 1;
 	}
 
-	err = nvhost_gr2d_clear(gr2d, fb, 1.0f, 0.0f, 1.0f, 1.0f, 0, 0, fb->width, fb->height);
+	err = nvhost_gr2d_clear(gr2d, fb, &fence, 1.0f, 0.0f, 1.0f, 1.0f, 0, 0, fb->width, fb->height);
+	if (err < 0) {
+		return 1;
+	}
+
+	err = nvhost_client_wait(&gr2d->client, &fence, -1);
 	if (err < 0) {
 		return 1;
 	}
