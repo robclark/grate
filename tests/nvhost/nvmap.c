@@ -315,7 +315,7 @@ struct nvmap_framebuffer *nvmap_framebuffer_create(struct nvmap *nvmap,
 		return NULL;
 	}
 
-	err = nvmap_handle_alloc(nvmap, fb->handle, 1 << 0, 1 << 0, 0x100);
+	err = nvmap_handle_alloc(nvmap, fb->handle, 1 << 0, 1 << 0, tiled ? 0x100 : 32);
 	if (err < 0) {
 		free(fb);
 		return NULL;
