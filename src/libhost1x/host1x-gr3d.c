@@ -957,7 +957,7 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 		} else {
 			dst.reg = 7;
 			dst.mask = 1 | (1 << 1) | (1 << 2) | (1 << 3);
-			vs_emit_alu(instr, VS_OP_MOV, 0, 0, &dst, src, 0);
+			vs_emit_alu(instr, VS_OP_MOV, 0, 1, &dst, src, 0);
 		}
 
 		printf("%d: ", i);
