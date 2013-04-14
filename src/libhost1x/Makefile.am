@@ -26,4 +26,4 @@ libhost1x_la_SOURCES = \
 	nvhost-nvmap.h \
 	stream.c
 
-libhost1x_la_LIBADD = $(DRM_LIBS) $(PNG_LIBS)
+libhost1x_la_LIBADD = $(DRM_LIBS) $(PNG_LIBS) 

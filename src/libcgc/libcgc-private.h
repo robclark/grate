@@ -58,6 +58,7 @@ int CgDrv_Compile(struct CgDrv *cgdrv, int unknown, int type,
 
 struct instruction;
 
+struct instruction *instruction_create(unsigned int count);
 struct instruction *instruction_create_from_words(uint32_t *words,
 						  unsigned int count);
 void instruction_free(struct instruction *inst);

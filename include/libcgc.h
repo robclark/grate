@@ -254,4 +254,32 @@ cgc_shader_find_constant(struct cgc_shader *shader, const char *name,
 					      name, index);
 }
 
+enum vs_reg_type {
+	VS_REG_TYPE_INVALID = 0,
+	VS_REG_TYPE_TEMP = 1,
+	VS_REG_TYPE_ATTR = 2,
+	VS_REG_TYPE_CONST = 3,
+	VS_REG_TYPE_VAR = 4
+};
+
+struct vs_dst {
+	int reg;
+	enum vs_reg_type type;
+	unsigned int mask;
+	int sat;
+};
+
+struct vs_src {
+	int reg;
+	enum vs_reg_type type;
+	unsigned int swz;
+	int neg, abs;
+};
+
+enum vs_op {
+	VS_OP_MOV = 0x1,
+	VS_OP_DP4 = 0x7
+};
+void vs_emit_alu(uint32_t stream[4], enum vs_op op, int cfetch, int afetch, const struct vs_dst *dst, const struct vs_src src[3], int last);
+
 #endif

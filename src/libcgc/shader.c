@@ -844,3 +844,45 @@ void cgc_shader_dump(struct cgc_shader *shader, FILE *fp)
 		i++;
 	}
 }
+
+void vs_emit_alu(uint32_t stream[4], enum vs_op op, int cfetch, int afetch, const struct vs_dst *dst, const struct vs_src src[3], int last)
+{
+	int i;
+	struct instruction *inst = instruction_create(4);
+	if (!inst)
+		return;
+
+	instruction_set_bit(inst, 126, dst->type == VS_REG_TYPE_VAR);
+	instruction_set_bit(inst, 122, dst->sat);
+	for (i = 0; i < 3; ++i)
+		instruction_set_bit(inst, 117 + i, src[i].abs);
+	instruction_insert(inst, 111, 116, dst->type == VS_REG_TYPE_TEMP ? dst->reg : 63);
+
+	instruction_set_bit(inst, 108, 1);
+	instruction_set_bit(inst, 107, 1);
+	instruction_set_bit(inst, 106, 1);
+
+	instruction_insert(inst, 98, 105, (0 << 6) | (1 << 4) | (2 << 2) | 3);
+
+	instruction_insert(inst, 86, 90, op);
+	instruction_insert(inst, 76, 83, cfetch);
+	instruction_insert(inst, 72, 75, afetch);
+	
+	for (i = 0; i < 3; ++i) {
+		int offs = 55 - 17 * i;
+		instruction_set_bit(inst, offs + 16, src[i].neg);
+		instruction_insert(inst, offs + 8, offs + 15, src[i].swz);
+		instruction_insert(inst, offs + 2, offs + 7, src[i].reg);
+		instruction_insert(inst, offs, offs + 1, src[i].type);
+	}
+
+	instruction_insert(inst, 17, 20, 0);
+	instruction_insert(inst, 13, 16, dst->mask);
+	instruction_insert(inst, 7, 12, 63);
+	instruction_insert(inst, 2, 5, dst->type == VS_REG_TYPE_VAR ? dst->reg : 0);
+	instruction_set_bit(inst, 0, last);
+
+	for (i = 0; i < 4; ++i)
+		stream[3 - i] = instruction_extract(inst, 32 * i, 32 * i + 31);
+	
+}

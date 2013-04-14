@@ -28,6 +28,7 @@
 
 #include "nvhost-gr3d.h"
 #include "host1x.h"
+#include "libcgc.h"
 
 #define HOST1X_GR3D_TEST 0
 
@@ -737,7 +738,7 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 	uint32_t format, pitch;
 	uint16_t *indices;
 	uint32_t fence;
-	int err, i;
+	int err, i, j;
 
 	/* XXX: count syncpoint increments in command stream */
 	job = host1x_job_create(syncpt->id, 9);
@@ -919,6 +920,7 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 	 * is used to upload vertex program code.
 	 */
 
+#if 0
 	host1x_pushbuf_push(pb, HOST1X_OPCODE_IMM(0x205, 0x00));
 	host1x_pushbuf_push(pb, HOST1X_OPCODE_NONINCR(0x206, 0x08));
 	host1x_pushbuf_push(pb, 0x401f9c6c);
@@ -929,6 +931,61 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 	host1x_pushbuf_push(pb, 0x0040010d);
 	host1x_pushbuf_push(pb, 0x8106c083);
 	host1x_pushbuf_push(pb, 0x6041ff9d);
+#endif
+
+	host1x_pushbuf_push(pb, HOST1X_OPCODE_IMM(0x205, 0x00));
+	host1x_pushbuf_push(pb, HOST1X_OPCODE_NONINCR(0x206, (4 + 1) * 4));
+	for (i = 0; i < 5; i++) {
+		int j;
+		uint32_t instr[4];
+		struct vs_dst dst;
+		struct vs_src src[3];
+
+		dst.type = VS_REG_TYPE_VAR;
+		for (j = 0; j < 3; ++j) {
+			src[j].reg = 0;
+			src[j].swz = (0 << 6) | (1 << 4) | (2 << 2) | 3;
+			src[j].neg = src[j].abs = 0;
+			src[j].type = VS_REG_TYPE_ATTR;
+		}
+
+		if (i > 0) {
+			dst.reg = 0;
+			dst.mask = 1 << (3 - (i - 1)); /* .x, .y, .z, .w */
+			src[1].type = VS_REG_TYPE_CONST;
+			vs_emit_alu(instr, VS_OP_DP4, (i - 1), 0, &dst, src, i == 4);
+		} else {
+			dst.reg = 7;
+			dst.mask = 1 | (1 << 1) | (1 << 2) | (1 << 3);
+			vs_emit_alu(instr, VS_OP_MOV, 0, 0, &dst, src, 0);
+		}
+
+		printf("%d: ", i);
+		for (j = 0; j < 4; ++j) {
+			printf("%08x ", instr[j]);
+			host1x_pushbuf_push(pb, instr[j]);
+		}
+		printf("\n");
+	}
+
+	host1x_pushbuf_push(pb, HOST1X_OPCODE_NONINCR(0x208, 4 * 4));
+	for (i = 0; i < 4; i++) {
+		const float mvp[4][4] = {
+			{ 2.0f, 0.0f, 0.0f, 0.0f },
+			{ 0.0f, 1.0f, 0.0f, 0.0f },
+			{ 0.0f, 0.0f, 1.0f, 0.0f },
+			{ 0.0f, 0.0f, 0.0f, 1.0f }
+		};
+		for (j = 0; j < 4; ++j) {
+			union {
+				float f;
+				uint32_t u;	
+			} u;
+			u.f = mvp[i][j];
+			host1x_pushbuf_push(pb, u.u);
+		}
+	}
+
 
 	/*
 	  Command Buffer:

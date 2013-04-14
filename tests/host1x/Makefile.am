@@ -5,4 +5,4 @@ noinst_PROGRAMS = \
 	gr2d-clear \
 	gr3d-triangle
 
-LDADD = ../../src/libhost1x/libhost1x.la
+LDADD = ../../src/libhost1x/libhost1x.la ../../src/libcgc/libcgc.la

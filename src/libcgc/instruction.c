@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libcgc-private.h"
 
@@ -32,11 +33,9 @@ struct instruction {
 	uint32_t *bits;
 };
 
-struct instruction *instruction_create_from_words(uint32_t *words,
-						  unsigned int count)
+struct instruction *instruction_create(unsigned int count)
 {
 	struct instruction *inst;
-	unsigned int i;
 
 	inst = calloc(1, sizeof(*inst));
 	if (!inst)
@@ -44,11 +43,25 @@ struct instruction *instruction_create_from_words(uint32_t *words,
 
 	inst->length = count * 32;
 
-	inst->bits = malloc(sizeof(*words) * count);
+	inst->bits = malloc(sizeof(uint32_t) * count);
 	if (!inst->bits) {
 		free(inst);
 		return NULL;
 	}
+
+	memset(inst->bits, 0, sizeof(uint32_t) * count);
+
+	return inst;
+}
+
+
+struct instruction *instruction_create_from_words(uint32_t *words,
+						  unsigned int count)
+{
+	unsigned int i;
+	struct instruction *inst = instruction_create(count);
+	if (!inst)
+		return NULL;
 
 	for (i = 0; i < count; i++)
 		inst->bits[i] = words[count - i - 1];
