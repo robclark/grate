@@ -933,32 +933,111 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 	host1x_pushbuf_push(pb, 0x6041ff9d);
 #endif
 
+	const struct vs_instr instrs[] = {
+		{
+			.vop = VS_OP_DP4,
+			.vdst = {
+				.reg = 0,
+				.type = VS_REG_TYPE_VAR,
+				.mask = WRITE_X,
+			},
+			.src = {
+				{
+					.reg = 0,
+					.type = VS_REG_TYPE_CONST,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				},
+				{
+					.reg = 0,
+					.type = VS_REG_TYPE_ATTR,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				}
+			}
+		},
+		{
+			.vop = VS_OP_DP4,
+			.vdst = {
+				.reg = 0,
+				.type = VS_REG_TYPE_VAR,
+				.mask = WRITE_Y,
+			},
+			.src = {
+				{
+					.reg = 1,
+					.type = VS_REG_TYPE_CONST,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				},
+				{
+					.reg = 0,
+					.type = VS_REG_TYPE_ATTR,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				}
+			}
+		},
+		{
+			.vop = VS_OP_DP4,
+			.vdst = {
+				.reg = 0,
+				.type = VS_REG_TYPE_VAR,
+				.mask = WRITE_Z,
+			},
+			.src = {
+				{
+					.reg = 2,
+					.type = VS_REG_TYPE_CONST,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				},
+				{
+					.reg = 0,
+					.type = VS_REG_TYPE_ATTR,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				}
+			}
+		},
+		{
+			.vop = VS_OP_DP4,
+			.vdst = {
+				.reg = 0,
+				.type = VS_REG_TYPE_VAR,
+				.mask = WRITE_W,
+			},
+			.src = {
+				{
+					.reg = 3,
+					.type = VS_REG_TYPE_CONST,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				},
+				{
+					.reg = 0,
+					.type = VS_REG_TYPE_ATTR,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				}
+			}
+		},
+		{
+			.vop = VS_OP_MOV,
+			.vdst = {
+				.reg = 7,
+				.type = VS_REG_TYPE_VAR,
+				.mask = WRITE_X | WRITE_Y | WRITE_Z | WRITE_W,
+			},
+			.src = {
+				{
+					.reg = 1,
+					.type = VS_REG_TYPE_ATTR,
+					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+				}
+			}
+		}
+
+	};
+
 	host1x_pushbuf_push(pb, HOST1X_OPCODE_IMM(0x205, 0x00));
-	host1x_pushbuf_push(pb, HOST1X_OPCODE_NONINCR(0x206, (4 + 1) * 4));
-	for (i = 0; i < 5; i++) {
-		int j;
+	host1x_pushbuf_push(pb, HOST1X_OPCODE_NONINCR(0x206, (sizeof(instrs) / sizeof(instrs[0])) * 4));
+
+	for (i = 0; i < sizeof(instrs) / sizeof(instrs[0]); i++) {
 		uint32_t instr[4];
-		struct vs_dst dst;
-		struct vs_src src[3];
-
-		dst.type = VS_REG_TYPE_VAR;
-		for (j = 0; j < 3; ++j) {
-			src[j].reg = 0;
-			src[j].swz = (0 << 6) | (1 << 4) | (2 << 2) | 3;
-			src[j].neg = src[j].abs = 0;
-			src[j].type = VS_REG_TYPE_ATTR;
-		}
-
-		if (i > 0) {
-			dst.reg = 0;
-			dst.mask = 1 << (3 - (i - 1)); /* .x, .y, .z, .w */
-			src[1].type = VS_REG_TYPE_CONST;
-			vs_emit_alu(instr, VS_OP_DP4, (i - 1), 0, &dst, src, i == 4);
-		} else {
-			dst.reg = 7;
-			dst.mask = 1 | (1 << 1) | (1 << 2) | (1 << 3);
-			vs_emit_alu(instr, VS_OP_MOV, 0, 1, &dst, src, 0);
-		}
+		vs_emit_instr(instr, instrs + i, i == sizeof(instrs) / sizeof(instrs[0]));
 
 		printf("%d: ", i);
 		for (j = 0; j < 4; ++j) {

@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "libcgc.h"
 #include "host1x.h"
@@ -845,41 +846,91 @@ void cgc_shader_dump(struct cgc_shader *shader, FILE *fp)
 	}
 }
 
-void vs_emit_alu(uint32_t stream[4], enum vs_op op, int cfetch, int afetch, const struct vs_dst *dst, const struct vs_src src[3], int last)
+void vs_emit_instr(uint32_t stream[4], const struct vs_instr *instr, int last)
 {
-	int i;
+	int i, cfetch = -1, afetch = -1, vwrite = -1, sat = -1;
 	struct instruction *inst = instruction_create(4);
 	if (!inst)
 		return;
 
-	instruction_set_bit(inst, 126, dst->type == VS_REG_TYPE_VAR);
-	instruction_set_bit(inst, 122, dst->sat);
+	/* abs-flags */
 	for (i = 0; i < 3; ++i)
-		instruction_set_bit(inst, 117 + i, src[i].abs);
-	instruction_insert(inst, 111, 116, dst->type == VS_REG_TYPE_TEMP ? dst->reg : 63);
+		instruction_set_bit(inst, 117 + i, instr->src[i].abs);
 
+	/* predicate stuff - hard code for now */
 	instruction_set_bit(inst, 108, 1);
 	instruction_set_bit(inst, 107, 1);
 	instruction_set_bit(inst, 106, 1);
-
 	instruction_insert(inst, 98, 105, (0 << 6) | (1 << 4) | (2 << 2) | 3);
 
-	instruction_insert(inst, 86, 90, op);
-	instruction_insert(inst, 76, 83, cfetch);
-	instruction_insert(inst, 72, 75, afetch);
-	
-	for (i = 0; i < 3; ++i) {
-		int offs = 55 - 17 * i;
-		instruction_set_bit(inst, offs + 16, src[i].neg);
-		instruction_insert(inst, offs + 8, offs + 15, src[i].swz);
-		instruction_insert(inst, offs + 2, offs + 7, src[i].reg);
-		instruction_insert(inst, offs, offs + 1, src[i].type);
+	/* scalar-op */
+	if (instr->sdst.mask) {
+		/* dst reg */
+		instruction_insert(inst, 91, 94, instr->sop);
+		instruction_insert(inst, 7, 12, instr->sdst.type == VS_REG_TYPE_TEMP ? instr->sdst.reg : 63);
+		instruction_insert(inst, 17, 20, instr->sdst.mask);
+		vwrite = instr->vdst.type == VS_REG_TYPE_VAR ? instr->vdst.reg : vwrite; 
+		sat = instr->sdst.sat;
 	}
 
-	instruction_insert(inst, 17, 20, 0);
-	instruction_insert(inst, 13, 16, dst->mask);
-	instruction_insert(inst, 7, 12, 63);
-	instruction_insert(inst, 2, 5, dst->type == VS_REG_TYPE_VAR ? dst->reg : 0);
+	/* vector-op */
+	if (instr->vdst.mask) {
+
+		/* opcode and dst reg */
+		instruction_insert(inst, 86, 90, instr->vop);
+
+		/* dst reg */
+		instruction_set_bit(inst, 126, instr->vdst.type == VS_REG_TYPE_VAR);
+		instruction_insert(inst, 111, 116, instr->vdst.type == VS_REG_TYPE_TEMP ? instr->vdst.reg : 63);
+		instruction_insert(inst, 13, 16, instr->vdst.mask);
+
+		if (instr->sdst.type == VS_REG_TYPE_VAR) {
+			/* varying write flag must match if both ops exist */
+			assert(vwrite < 0 || vwrite == instr->vdst.sat);
+			vwrite = instr->sdst.reg;
+		}
+
+		/* saturate flag must match if both ops exist */
+		assert(sat < 0 || sat == instr->vdst.sat);
+		sat = instr->vdst.sat;
+	}
+
+	instruction_set_bit(inst, 122, sat);
+	instruction_insert(inst, 2, 5, instr->vdst.type == VS_REG_TYPE_VAR ? instr->vdst.reg : 0);
+
+	/* source registers */
+	for (i = 0; i < 3; ++i) {
+		const struct vs_src *src = instr->src + i;
+		int reg = src->reg;
+		int offs = 55 - 17 * i;
+
+		if (src->type == VS_REG_TYPE_CONST) {
+			/* only one field for encoding this */
+			assert(cfetch < 0 || cfetch == reg);
+			cfetch = reg;
+			reg = 0;
+		} else if (src->type == VS_REG_TYPE_ATTR) {
+			/* only one field for encoding this */
+			assert(afetch < 0 || afetch == reg);
+			afetch = reg;
+			reg = 0;
+		}
+
+		assert(src->type != VS_REG_TYPE_VAR);
+
+		instruction_set_bit(inst, offs + 16, src->neg);
+		instruction_insert(inst, offs + 8, offs + 15, src->swz);
+		instruction_insert(inst, offs + 2, offs + 7, reg);
+		instruction_insert(inst, offs, offs + 1,
+		    src->type != VS_REG_TYPE_INVALID ?
+		    src->type : VS_REG_TYPE_ATTR);
+	}
+
+	/* constant and attribute fetches */
+	instruction_insert(inst, 76, 83, cfetch >= 0 ? cfetch : 0);
+	instruction_insert(inst, 72, 75, afetch >= 0 ? afetch : 0);
+
+	/* last instruction */
 	instruction_set_bit(inst, 0, last);
 
 	for (i = 0; i < 4; ++i)

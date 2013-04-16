@@ -262,6 +262,17 @@ enum vs_reg_type {
 	VS_REG_TYPE_VAR = 4
 };
 
+#define WRITE_X (1 << 3)
+#define WRITE_Y (1 << 2)
+#define WRITE_Z (1 << 1)
+#define WRITE_W (1 << 0)
+
+#define SWZ_X 0
+#define SWZ_Y 1
+#define SWZ_Z 2
+#define SWZ_W 3
+#define SWIZZLE(x, y, z, w) (((x) << 6) | ((y) << 4) | ((z) << 2) | (w))
+
 struct vs_dst {
 	int reg;
 	enum vs_reg_type type;
@@ -280,6 +291,13 @@ enum vs_op {
 	VS_OP_MOV = 0x1,
 	VS_OP_DP4 = 0x7
 };
-void vs_emit_alu(uint32_t stream[4], enum vs_op op, int cfetch, int afetch, const struct vs_dst *dst, const struct vs_src src[3], int last);
+
+struct vs_instr {
+	int vop, sop;
+	struct vs_dst vdst, sdst;
+	struct vs_src src[3];
+};
+
+void vs_emit_instr(uint32_t stream[4], const struct vs_instr *instr, int last);
 
 #endif
