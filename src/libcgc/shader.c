@@ -861,7 +861,7 @@ void vs_emit_instr(uint32_t stream[4], const struct vs_instr *instr, int last)
 	instruction_set_bit(inst, 108, 1);
 	instruction_set_bit(inst, 107, 1);
 	instruction_set_bit(inst, 106, 1);
-	instruction_insert(inst, 98, 105, (0 << 6) | (1 << 4) | (2 << 2) | 3);
+	instruction_insert(inst, 98, 105, SWIZZLE_XYZW);
 
 	/* scalar-op */
 	if (instr->sdst.mask) {

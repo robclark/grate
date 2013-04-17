@@ -272,6 +272,7 @@ enum vs_reg_type {
 #define SWZ_Z 2
 #define SWZ_W 3
 #define SWIZZLE(x, y, z, w) (((x) << 6) | ((y) << 4) | ((z) << 2) | (w))
+#define SWIZZLE_XYZW SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
 
 struct vs_dst {
 	int reg;

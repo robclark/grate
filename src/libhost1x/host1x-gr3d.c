@@ -945,12 +945,12 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 				{
 					.reg = 0,
 					.type = VS_REG_TYPE_CONST,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				},
 				{
 					.reg = 0,
 					.type = VS_REG_TYPE_ATTR,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				}
 			}
 		},
@@ -965,12 +965,12 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 				{
 					.reg = 1,
 					.type = VS_REG_TYPE_CONST,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				},
 				{
 					.reg = 0,
 					.type = VS_REG_TYPE_ATTR,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				}
 			}
 		},
@@ -985,12 +985,12 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 				{
 					.reg = 2,
 					.type = VS_REG_TYPE_CONST,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				},
 				{
 					.reg = 0,
 					.type = VS_REG_TYPE_ATTR,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				}
 			}
 		},
@@ -1005,12 +1005,12 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 				{
 					.reg = 3,
 					.type = VS_REG_TYPE_CONST,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				},
 				{
 					.reg = 0,
 					.type = VS_REG_TYPE_ATTR,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				}
 			}
 		},
@@ -1025,7 +1025,7 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 				{
 					.reg = 1,
 					.type = VS_REG_TYPE_ATTR,
-					.swz = SWIZZLE(SWZ_X, SWZ_Y, SWZ_Z, SWZ_W)
+					.swz = SWIZZLE_XYZW
 				}
 			}
 		}
