@@ -1019,7 +1019,7 @@ int host1x_gr3d_triangle(struct host1x_gr3d *gr3d,
 			.vdst = {
 				.reg = 7,
 				.type = VS_REG_TYPE_VAR,
-				.mask = WRITE_X | WRITE_Y | WRITE_Z | WRITE_W,
+				.mask = WRITE_XYZW,
 			},
 			.src = {
 				{

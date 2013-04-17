@@ -266,6 +266,7 @@ enum vs_reg_type {
 #define WRITE_Y (1 << 2)
 #define WRITE_Z (1 << 1)
 #define WRITE_W (1 << 0)
+#define WRITE_XYZW (WRITE_X | WRITE_Y | WRITE_Z | WRITE_W)
 
 #define SWZ_X 0
 #define SWZ_Y 1
