@@ -68,10 +68,6 @@ def expression(type):
 		lambda type: expression(type) + " - " + expression(type),
 	])(type)
 
-# print constant("bvec2")
-
-# sys.setrecursionlimit(10000)
-
 import argparse
 
 parser = argparse.ArgumentParser(description='Generate random ESSL shaders.')
