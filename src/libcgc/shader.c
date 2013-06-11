@@ -761,7 +761,7 @@ static void fragment_sfu_disasm(uint32_t *words)
 }
 
 
-static void fragment_shader_disassemble(uint32_t *words, size_t length)
+static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb)
 {
 	int i, j;
 	uint32_t *sfu = NULL, *alu = NULL;
@@ -781,6 +781,7 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length)
 			int class_id = (word >> 6) & 0x3ff;
 			offset = (word >> 16) & 0xfff;
 
+			if (verb)
 			printf("    setclass %d %d, mask: %x\n", class_id, offset, mask);
 			count = 0;
 			for (i = 0; i < 6; ++i)
@@ -789,6 +790,7 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length)
 		} else if (opcode == 3) {
 			int i, mask = word & 0xffff;
 			offset = (word >> 16) & 0xfff;
+			if (verb)
 			printf("    mask: %x\n", mask);
 			count = 0;
 			for (i = 0; i < 16; ++i)
@@ -799,6 +801,7 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length)
 			count = word & 0xffff;
 		}
 
+		if (verb)
 		printf("    upload, offset 0x%03x, %d words\n", offset, count);
 		switch (offset) {
 		case 0x604:
@@ -810,12 +813,17 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length)
 			alu_length = count;
 			break;
 		default:
+			if (verb)
 			printf("    unknown upload, offset 0x%03x\n", offset);
+			if (verb)
 			for (j = 0; j < count; ++j)
 				printf("      0x%08x\n", words[i + j]);
 		}
 		i += count;
 	}
+
+	if (verb)
+		return;
 
 	printf("  alu instructions:\n");
 	for (i = 0; i < alu_length; i += 8) {
@@ -852,7 +860,8 @@ static void shader_stream_dump(struct cgc_shader *shader, FILE *fp)
 		length = header->binary_size - sizeof(*fs);
 		words = fs->words;
 
-		fragment_shader_disassemble(words, length / 4);
+		fragment_shader_disassemble(words, length / 4, 0);
+		fragment_shader_disassemble(words, length / 4, 1);
 
 		fprintf(fp, "signature: %.*s\n", 8, fs->signature);
 		fprintf(fp, "unknown0: 0x%08x\n", fs->unknown0);
@@ -1018,12 +1027,24 @@ struct cgc_symbol *cgc_shader_find_symbol_by_kind(struct cgc_shader *shader,
 	return NULL;
 }
 
+static float flt(uint32_t dword)
+{
+	union {
+		float f;
+		uint32_t d;
+	} u;
+	u.d = dword;
+	return u.f;
+}
+
 void cgc_shader_dump(struct cgc_shader *shader, FILE *fp)
 {
 	struct cgc_header *header = shader->binary;
 	struct cgc_symbol *symbol;
 	unsigned int i, j;
 	const char *type;
+
+	cgc_shader_disassemble(shader, fp);
 
 	fprintf(fp, "shader binary: %zu bytes\n", shader->size);
 
@@ -1113,7 +1134,7 @@ void cgc_shader_dump(struct cgc_shader *shader, FILE *fp)
 			const uint32_t *values = shader->binary + symbol->values_offset;
 
 			for (j = 0; j < 4; j++)
-				fprintf(fp, "        0x%08x\n", values[j]);
+				fprintf(fp, "        0x%08x (%f)\n", values[j], flt(values[j]));
 		}
 
 		fprintf(fp, "      unknown06: 0x%08x\n", symbol->unknown06);
@@ -1123,8 +1144,6 @@ void cgc_shader_dump(struct cgc_shader *shader, FILE *fp)
 		fprintf(fp, "      unknown10: 0x%08x\n", symbol->unknown10);
 		fprintf(fp, "      unknown11: 0x%08x\n", symbol->unknown11);
 	}
-
-	cgc_shader_disassemble(shader, fp);
 
 	fprintf(fp, "  attributes:\n");
 	i = 0;
