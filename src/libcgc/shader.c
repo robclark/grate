@@ -682,7 +682,7 @@ static int fragment_alu_disasm(uint32_t *words)
 
 out:
 
-	printf("    ");
+	printf("     ");
 
 	instruction_print_raw(inst);
 	instruction_print_unknown(inst);
@@ -750,7 +750,7 @@ static void fragment_sfu_disasm(uint32_t *words)
 		pr("var v%d", var);
 	}
 
-	printf("    ");
+	printf("     ");
 
 	instruction_print_raw(inst);
 	instruction_print_unknown(inst);
@@ -763,15 +763,17 @@ static void fragment_sfu_disasm(uint32_t *words)
 static const char * offset_name(uint32_t offset)
 {
 	switch (offset) {
+	case 0x206: return "VTX";
 	case 0x604: return "SFU";
+	case 0x701: return "TEX";
 	case 0x804: return "ALU";
 	default:    return "???";
 	}
 }
 
-static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb)
+static void fragment_shader_disassemble(uint32_t *words, size_t length)
 {
-	int i, j;
+	int i, j, k;
 	uint32_t *sfu = NULL, *alu = NULL;
 	int sfu_length = 0, alu_length = 0;
 
@@ -789,7 +791,6 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb
 			int class_id = (word >> 6) & 0x3ff;
 			offset = (word >> 16) & 0xfff;
 
-			if (verb)
 			printf("    setclass %d %d, mask: %x\n", class_id, offset, mask);
 			count = 0;
 			for (i = 0; i < 6; ++i)
@@ -798,7 +799,6 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb
 		} else if (opcode == 3) {
 			int i, mask = word & 0xffff;
 			offset = (word >> 16) & 0xfff;
-			if (verb)
 			printf("    mask: %x\n", mask);
 			count = 0;
 			for (i = 0; i < 16; ++i)
@@ -809,39 +809,37 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb
 			count = word & 0xffff;
 		}
 
-		if (verb)
+printf("----------------------------------------------------------------\n");
 		printf("    upload, offset 0x%03x (%s), %d words\n", offset, offset_name(offset), count);
 		switch (offset) {
 		case 0x604:
 			sfu = words + i;
 			sfu_length = count;
+
+			printf("      sfu instructions:\n");
+			for (j = 0; j < sfu_length; j += 2)
+				fragment_sfu_disasm(sfu + j);
+
 			break;
 		case 0x804:
 			alu = words + i;
 			alu_length = count;
+
+			printf("      alu instructions:\n");
+			for (j = 0; j < alu_length; j += 8) {
+				int embedded_constant_used = 0;
+				for (k = 0; k < (embedded_constant_used ? 3 : 4); ++k)
+					 embedded_constant_used |= fragment_alu_disasm(alu + j + k * 2);
+				printf("\n");
+			}
+
 			break;
 		default:
-			if (verb)
 			for (j = 0; j < count; ++j)
 				printf("      0x%08x\n", words[i + j]);
 		}
 		i += count;
 	}
-
-	if (verb)
-		return;
-
-	printf("  alu instructions:\n");
-	for (i = 0; i < alu_length; i += 8) {
-		int embedded_constant_used = 0;
-		for (j = 0; j < (embedded_constant_used ? 3 : 4); ++j)
-			 embedded_constant_used |= fragment_alu_disasm(alu + i + j * 2);
-		printf("\n");
-	}
-
-	printf("  sfu instructions:\n");
-	for (i = 0; i < sfu_length; i += 2)
-		fragment_sfu_disasm(sfu + i);
 }
 
 static void shader_stream_dump(struct cgc_shader *shader, FILE *fp)
@@ -866,8 +864,7 @@ static void shader_stream_dump(struct cgc_shader *shader, FILE *fp)
 		length = header->binary_size - sizeof(*fs);
 		words = fs->words;
 
-		fragment_shader_disassemble(words, length / 4, 0);
-		fragment_shader_disassemble(words, length / 4, 1);
+		fragment_shader_disassemble(words, length / 4);
 
 		fprintf(fp, "signature: %.*s\n", 8, fs->signature);
 		fprintf(fp, "unknown0: 0x%08x\n", fs->unknown0);
