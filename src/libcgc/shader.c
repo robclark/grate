@@ -760,6 +760,14 @@ static void fragment_sfu_disasm(uint32_t *words)
 	instruction_free(inst);
 }
 
+static const char * offset_name(uint32_t offset)
+{
+	switch (offset) {
+	case 0x604: return "SFU";
+	case 0x804: return "ALU";
+	default:    return "???";
+	}
+}
 
 static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb)
 {
@@ -802,7 +810,7 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb
 		}
 
 		if (verb)
-		printf("    upload, offset 0x%03x, %d words\n", offset, count);
+		printf("    upload, offset 0x%03x (%s), %d words\n", offset, offset_name(offset), count);
 		switch (offset) {
 		case 0x604:
 			sfu = words + i;
@@ -813,8 +821,6 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length, int verb
 			alu_length = count;
 			break;
 		default:
-			if (verb)
-			printf("    unknown upload, offset 0x%03x\n", offset);
 			if (verb)
 			for (j = 0; j < count; ++j)
 				printf("      0x%08x\n", words[i + j]);
