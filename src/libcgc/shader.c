@@ -764,8 +764,10 @@ static const char * offset_name(uint32_t offset)
 {
 	switch (offset) {
 	case 0x206: return "VTX";
+	case 0x601: return "SFU-SCHED";
 	case 0x604: return "SFU";
 	case 0x701: return "TEX";
+	case 0x801: return "ALU-SCHED";
 	case 0x804: return "ALU";
 	default:    return "???";
 	}
@@ -773,9 +775,29 @@ static const char * offset_name(uint32_t offset)
 
 static void fragment_shader_disassemble(uint32_t *words, size_t length)
 {
-	int i, j, k;
+	int i, j;
 	uint32_t *sfu = NULL, *alu = NULL;
 	int sfu_length = 0, alu_length = 0;
+	uint32_t *sfu_sched = NULL, *alu_sched = NULL;
+	int sfu_sched_length = 0, alu_sched_length = 0;
+
+	void print_sfu(int idx, int t)
+	{
+		printf("SFU:");
+		if (t) printf("%03d", t);
+		fragment_sfu_disasm(sfu + (idx * 2));
+	}
+
+	void print_alu(int idx, int t)
+	{
+		int k;
+		int embedded_constant_used = 0;
+		for (k = 0; k < (embedded_constant_used ? 3 : 4); ++k) {
+			printf("ALU:");
+			if (t) printf("%03d", t);
+			embedded_constant_used |= fragment_alu_disasm(alu + (idx * 8) + k * 2);
+		}
+	}
 
 	for (i = 0; i < length; ) {
 		uint32_t word = words[i++];
@@ -812,24 +834,34 @@ static void fragment_shader_disassemble(uint32_t *words, size_t length)
 printf("----------------------------------------------------------------\n");
 		printf("    upload, offset 0x%03x (%s), %d words\n", offset, offset_name(offset), count);
 		switch (offset) {
+		case 0x601:
+			sfu_sched = words + i;
+			sfu_sched_length = count;
+			for (j = 0; j < count; ++j)
+				printf("      0x%08x\n", words[i + j]);
+			break;
 		case 0x604:
 			sfu = words + i;
-			sfu_length = count;
+			sfu_length = count / 2;
 
 			printf("      sfu instructions:\n");
-			for (j = 0; j < sfu_length; j += 2)
-				fragment_sfu_disasm(sfu + j);
+			for (j = 0; j < sfu_length; j++)
+				print_sfu(j, 0);
 
+			break;
+		case 0x801:
+			alu_sched = words + i;
+			alu_sched_length = count;
+			for (j = 0; j < count; ++j)
+				printf("      0x%08x\n", words[i + j]);
 			break;
 		case 0x804:
 			alu = words + i;
-			alu_length = count;
+			alu_length = count / 8;
 
 			printf("      alu instructions:\n");
-			for (j = 0; j < alu_length; j += 8) {
-				int embedded_constant_used = 0;
-				for (k = 0; k < (embedded_constant_used ? 3 : 4); ++k)
-					 embedded_constant_used |= fragment_alu_disasm(alu + j + k * 2);
+			for (j = 0; j < alu_length; j++) {
+				print_alu(j, 0);
 				printf("\n");
 			}
 
@@ -839,6 +871,44 @@ printf("----------------------------------------------------------------\n");
 				printf("      0x%08x\n", words[i + j]);
 		}
 		i += count;
+	}
+
+	if (alu_sched && sfu_sched) {
+		int si = 0, ai = 0;       /* instruction index */
+
+/* This isn't quite right.. I see sequences like (aaa-2b.fs.txt, for example):
+ *    upload, offset 0x801 (ALU-SCHED), 8 words
+ *      0x00000002 \     larger gap here, what would make sense is SFU first,
+ *      0x0000000a |-->  followed by multiple ALU instruction groups..
+ *      0x00000011 /
+ *      0x00000000
+ *      0x00000015
+ *      0x00000000
+ *      0x00000019
+ *      0x00000000
+ *    upload, offset 0x601 (SFU-SCHED), 8 words
+ *      0x00000001
+ *      0x00000000
+ *      0x00000005
+ *      0x00000009
+ *      0x00000000
+ *      0x0000000d
+ *      0x00000000
+ *      0x00000011
+ */
+		assert(alu_sched_length == sfu_sched_length);  /* I think! */
+
+		for (i = 0; i < alu_sched_length; i++) {
+			if (sfu_sched[i] && alu_sched[i]) {
+				/* I guess, if same value for sfu and alu, that sfu wins? */
+				print_sfu(si++, sfu_sched[i]);
+				print_alu(ai++, alu_sched[i]);
+			} else if (sfu_sched[i]) {
+				print_sfu(si++, sfu_sched[i]);
+			} else if (alu_sched[i]) {
+				print_alu(ai++, alu_sched[i]);
+			}
+		}
 	}
 }
 
